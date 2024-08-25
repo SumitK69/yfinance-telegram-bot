@@ -30,7 +30,6 @@ def send_welcome(message):
 @bot.message_handler(commands=['scrip1'])
 def scrip1_handler(message):
     user_id = message.from_user.id
-    print(user_id)
     command_text = message.text
     parts = command_text.split(' ', 1)
     if len(parts) > 1:
@@ -85,31 +84,40 @@ def get_chart(message):
         bot.reply_to(message,f"Few values must be missing scrip1_ratio: {data['scrip1_ratio']}, scrip1: {data['scrip1']}, scrip2_ratio: {data['scrip2_ratio']}, scrip2: {data['scrip2']}")
         
     else:
+        
         ticker_symbol1 = data['scrip1'].upper()
         ticker1 = yf.Ticker(ticker_symbol1)
-        history_data_scrip1 = ticker1.history(period='1d', interval='1m')
-        
-        history_data_scrip1[f'Normalized {data['scrip1']}'] = history_data_scrip1['Close'] / int(data['scrip1_ratio'])
-        
-        print("history_data_scrip1",history_data_scrip1)
-        history_data_scrip1.index = history_data_scrip1.index.tz_localize(None)
-        
-        # history_data_scrip1.to_csv('history_data_scrip1.csv')
-
-        
         ticker_symbol2 = data['scrip2'].upper()
         ticker2 = yf.Ticker(ticker_symbol2)
-        history_data_scrip2 = ticker2.history(period='1d', interval='1m')
-     
-        history_data_scrip2[f'Normalized {data['scrip2']}'] = history_data_scrip2['Close'] / int(data['scrip2_ratio'])
         
-        print("history_data_scrip2",history_data_scrip2)
+    #! 1 day chart edit 
+        
+        history_data_scrip1 = ticker1.history(period='1d', interval='1m')
+        history_data_scrip1[f'Normalized {data['scrip1']}'] = history_data_scrip1['Close'] / int(data['scrip1_ratio'])        
+        history_data_scrip1.index = history_data_scrip1.index.tz_localize(None)
+
+        history_data_scrip2 = ticker2.history(period='1d', interval='1m')
+        history_data_scrip2[f'Normalized {data['scrip2']}'] = history_data_scrip2['Close'] / int(data['scrip2_ratio'])
         history_data_scrip2.index = history_data_scrip2.index.tz_localize(None)
 
-        # history_data_scrip2.to_csv('history_data_scrip2.csv')
+    #! 1 day chart edit 
+
+
+#! 1 month chart 
         
+        month_history_data_scrip1 = ticker1.history(period='1mo', interval='1d')
+        month_history_data_scrip1[f'Normalized {data['scrip1']}'] = month_history_data_scrip1['Close'] / int(data['scrip1_ratio'])
+        month_history_data_scrip1.index = month_history_data_scrip1.index.tz_localize(None)
+
+        month_history_data_scrip2 = ticker2.history(period='1mo', interval='1d')
+        month_history_data_scrip2[f'Normalized {data['scrip2']}'] = month_history_data_scrip2['Close'] / int(data['scrip2_ratio'])
+        month_history_data_scrip2.index = month_history_data_scrip2.index.tz_localize(None)
+
+#! 1 month chart 
         
-        
+      
+#! 1 day chart edit
+  
         if len(history_data_scrip1) < len(history_data_scrip2):
             combined_data = pd.DataFrame({
                 'Date': history_data_scrip1.index,
@@ -123,14 +131,13 @@ def get_chart(message):
                 f'Normalized {data["scrip2"]}': history_data_scrip2[f'Normalized {data["scrip2"]}']
             }).dropna().set_index('Date')
         
-      
         combined_data['Percent_Diff'] = 100 * (combined_data[f'Normalized {data["scrip2"]}'] - combined_data[f'Normalized {data["scrip1"]}']) / combined_data[f'Normalized {data["scrip1"]}']
         
-        # combined_data.to_csv("combined_data.csv")
-        
-        
-        
         combined_data.index = combined_data.index.tz_localize(None)
+        
+        
+        bot.reply_to(message,f"scrip1_ratio: {data['scrip1_ratio']}, scrip1: {data['scrip1']}, scrip2_ratio: {data['scrip2_ratio']}, scrip2: {data['scrip2']}")
+        
         plt.figure(figsize=(14, 7))
         plt.plot(combined_data.index, combined_data[f'Normalized {data['scrip1']}'], label=f'{data['scrip1'].upper()}')
         plt.plot(combined_data.index, combined_data[f'Normalized {data['scrip2']}'], label=f'{data['scrip2'].upper()}')
@@ -146,18 +153,59 @@ def get_chart(message):
         plt.plot(combined_data.index, combined_data['Percent_Diff'],color="red",linestyle = "--",label="Percentage Difference")
         plt.ylabel('Percentage Difference (%)')
         plt.legend(loc='upper right')
-        plt.savefig('plot.png')
+        plt.savefig('day_plot.png')
         # plt.show()
 
-        with open('plot.png', 'rb') as photo:
-            bot.send_photo(message.chat.id, photo)
+        with open('day_plot.png', 'rb') as photo:
+            bot.send_photo(message.chat.id, photo,"Day Plot")
 
-        os.remove('plot.png')
+        os.remove('day_plot.png')
 
+#! 1 day chart edit
 
-        # print("history_data",history_data)
-  
-        bot.reply_to(message,f"scrip1_ratio: {data['scrip1_ratio']}, scrip1: {data['scrip1']}, scrip2_ratio: {data['scrip2_ratio']}, scrip2: {data['scrip2']}")
+#! 1 month chart 
+
+        if len(month_history_data_scrip1) < len(month_history_data_scrip2):
+            month_combined_data = pd.DataFrame({
+                'Date': month_history_data_scrip1.index,
+                f'Normalized {data["scrip1"]}': month_history_data_scrip1[f'Normalized {data["scrip1"]}'],
+                f'Normalized {data["scrip2"]}': month_history_data_scrip2[f'Normalized {data["scrip2"]}'].reindex(month_history_data_scrip1.index)
+            }).dropna().set_index('Date')
+        else:
+            month_combined_data = pd.DataFrame({
+                'Date': month_history_data_scrip2.index,
+                f'Normalized {data["scrip1"]}': month_history_data_scrip1[f'Normalized {data["scrip1"]}'].reindex(month_history_data_scrip2.index),
+                f'Normalized {data["scrip2"]}': month_history_data_scrip2[f'Normalized {data["scrip2"]}']
+            }).dropna().set_index('Date')
+            
+        month_combined_data['Percent_Diff'] = 100 * (month_combined_data[f'Normalized {data["scrip2"]}'] - month_combined_data[f'Normalized {data["scrip1"]}']) / month_combined_data[f'Normalized {data["scrip1"]}']
+            
+        month_combined_data.index = month_combined_data.index.tz_localize(None)
+        
+        plt.figure(figsize=(14, 7))
+        plt.plot(month_combined_data.index, month_combined_data[f'Normalized {data['scrip1']}'], label=f'{data['scrip1'].upper()}')
+        plt.plot(month_combined_data.index, month_combined_data[f'Normalized {data['scrip2']}'], label=f'{data['scrip2'].upper()}')
+        
+        plt.xlabel('Date')
+        plt.ylabel('Normalized Price')
+        plt.title('Stock Prices and Percentage Difference')
+        plt.legend()
+        # plt.legend(loc='upper left')
+        plt.grid(True)
+        
+        plt.twinx()
+        plt.plot(month_combined_data.index, month_combined_data['Percent_Diff'],color="red",linestyle = "--",label="Percentage Difference")
+        plt.ylabel('Percentage Difference (%)')
+        plt.legend(loc='upper right')
+        plt.savefig('month_plot.png')
+        # plt.show()
+
+        with open('month_plot.png', 'rb') as photo:
+            bot.send_photo(message.chat.id, photo,"Month Plot")
+
+        os.remove('month_plot.png')
+
+#! 1 month chart 
 
 @bot.message_handler(commands=['reset'])
 def reset(message):
